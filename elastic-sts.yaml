@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticlogging
+  namespace: logging-solution
+  labels:
+    k8s-app: elasticsearch
+    version: 7.17.0
+    addonmanager.kubernetes.io/mode: Reconcile
+spec:
+  serviceName: elasticsearch
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: elasticsearch
+      version: 7.17.0
+  template:
+    metadata:
+      labels:
+        k8s-app: elasticsearch
+        version: 7.17.0
+    spec:
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9200
+          name: rest
+          protocol: TCP
+        - containerPort: 9300
+          name: inter-node
+          protocol: TCP
+        volumeMounts:
+        - name: elasticsearch
+          mountPath: /data
+        env:
+          - name: cluster.name
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: "MINIMUM_MASTER_NODES"
+            value: "1"
+      volumes:
+        - name: elasticsearch-logging
+          emptyDir: {}      
+      initContainers:
+      - name: elasticsearch-init
+        image: busybox
+        command: ["sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data"]
+        securityContext:
+          privileged: true
